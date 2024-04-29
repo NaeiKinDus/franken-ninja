@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 resource "kubernetes_persistent_volume_claim_v1" "app_data" {
   metadata {
     name        = var.app_name

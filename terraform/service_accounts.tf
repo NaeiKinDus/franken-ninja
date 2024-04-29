@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 resource "kubernetes_service_account_v1" "invoice" {
   metadata {
     name = var.service_account_name

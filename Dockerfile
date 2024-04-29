@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 ARG BASE_IMAGE=dunglas/frankenphp
 ARG FRANKENPHP_VERSION=1.1.1
 ARG PHP_VERSION=8.2
@@ -7,7 +8,7 @@ ARG REPOSITORY=docker.io
 FROM ${REPOSITORY}/${BASE_IMAGE}:${FRANKENPHP_VERSION}-php${PHP_VERSION}-${OS_FLAVOR}
 LABEL org.opencontainers.image.base.name="dunglas/frankenphp"
 LABEL org.opencontainers.image.description="Light-ish Invoice Ninja image using FrankenPHP"
-LABEL org.opencontainers.image.licenses="GPL-2.0"
+LABEL org.opencontainers.image.licenses="GPL-2.0-only"
 LABEL org.opencontainers.image.title="Invoice Ninja"
 LABEL org.opencontainers.image.authors="Florian Lavidalie"
 LABEL org.opencontainers.image.vendor="Florian Lavidalie"

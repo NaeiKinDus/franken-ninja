@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 resource "kubernetes_config_map_v1" "app_config" {
   metadata {
     name        = var.app_name

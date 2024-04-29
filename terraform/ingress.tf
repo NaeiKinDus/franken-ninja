@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 ### Traefik Ingress
 resource "kubernetes_manifest" "app_ingress_route_tcp" {
   count = var.use_ingress && var.ingress_controller == "traefik" ? 1 : 0

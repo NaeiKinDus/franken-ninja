@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 output "app_url" {
   value       = format("https://%s", var.ingress_host_url)
   description = "Website URL"

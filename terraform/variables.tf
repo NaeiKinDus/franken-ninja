@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 variable "kubeconfig_path" {
   default     = "~/.kube/config"
   description = "Path to the kubeconfig file"
