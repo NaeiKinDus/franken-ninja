@@ -1,0 +1,92 @@
+#!/bin/sh
+set -e
+
+# Path where IN source code is stored
+APP_DIR="/app"
+# Deployment type; special values are: init, app, upkeep; all others are ignored and simply exec the command given
+APP_TYPE=${APP_TYPE:="app"}
+# Used by the 'init' app type; path where the source code will be copied; used in K8S init containers to populate a volume
+INIT_TARGET_DIR=${INIT_TARGET_DIR:="/app_mount"}
+
+kill_switch() {
+    exit 0
+}
+
+# Loop wait for a database connection to be available
+wait_for_db_link() {
+  if [ -z "${SKIP_DB_LINK_CHECK}" ]; then
+    printf "Waiting for DB connection"
+    RETRIES=0
+    while [ $RETRIES -le "${WAIT_FOR_DB_LINK_MAX_RETRY:-5}" ]; do
+      if php artisan tinker --execute='echo app()->call("App\Utils\SystemHealth@dbCheck")["success"];' > /dev/null; then
+        break
+      fi
+      printf "."
+      RETRIES=$((RETRIES + 1))
+      sleep "${WAIT_FOR_DB_LINK_SLEEP_TIME:-10}"
+    done
+    if [ $RETRIES -eq "${WAIT_FOR_DB_LINK_MAX_RETRY:-5}" ]; then
+        echo "Error: max DB retry reached, aborting." >&2
+    fi
+    printf " done.\n"
+  fi
+}
+
+# Initialize application: install vendors, warms up the cache, ...
+run_init_tasks() {
+  if [ -z "${SKIP_INIT_TASKS}" ]; then
+    printf "Performing init tasks...\n"
+    OLD_CWD=$(pwd)
+    cd "${APP_DIR}"
+    php artisan config:cache
+    php artisan optimize
+    php artisan package:discover
+    php artisan migrate --force
+    cd "${OLD_CWD}"
+    printf "\nDone!\n"
+  fi
+}
+
+case "${APP_TYPE}" in
+  app)
+    wait_for_db_link
+
+    # first arg is `-f` or `--some-option`
+    if [ "${1#-}" != "$1" ]; then
+      set -- frankenphp run "$@"
+    fi
+    exec "$@"
+    exit 0
+    ;;
+  upkeep)
+    wait_for_db_link
+    run_init_tasks
+
+    # Trap children processes status; if one fails, kills the container
+    trap kill_switch INT TERM CHLD
+    if [ -z "${DISABLE_SCHEDULE:-}" ]; then
+      exec php /app/artisan schedule:work &
+    fi
+
+    started_workers=0
+    while [ $started_workers -lt "${QUEUE_WORKERS_COUNT:-3}" ]; do
+      exec php /app/artisan queue:work \
+        --sleep="${QUEUE_WORKERS_SLEEP_PERIOD:-3}" \
+        --tries="${QUEUE_WORKERS_MAX_TRIES:-3}" \
+        --memory="${QUEUE_WORKERS_MEMORY_MAX:-256}" \
+        --backoff="${QUEUE_WORKERS_BACKOFF_PERIOD:-10}" &
+      started_workers=$(( started_workers + 1 ))
+    done
+
+    wait
+    ;;
+  init)
+    wait_for_db_link
+    run_init_tasks
+    cp -r /app/. "${INIT_TARGET_DIR}"
+
+    exit 0
+    ;;
+  *)
+    exec "$@"
+esac

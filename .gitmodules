@@ -1,0 +1,4 @@
+[submodule "application"]
+	path = application
+	url = https://github.com/invoiceninja/invoiceninja.git
+	branch = v5-stable

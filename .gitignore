@@ -1,0 +1,9 @@
+.idea
+config/sql_init.d/*
+config/.env
+!.gitkeep
+.terraform.lock.hcl
+.terraform
+*.tfvars
+*.tfstate
+*.tfstate.backup

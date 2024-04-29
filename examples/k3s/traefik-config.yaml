@@ -1,0 +1,62 @@
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    globalArguments:
+      - "--global.checknewversion"
+    image:
+      repository: "traefik"
+      tag: "2.11.2"
+    ports:
+      traefik:
+        port: 9000
+        expose: false
+        exposedPort: 9000
+        protocol: TCP
+      web:
+        port: 8000
+        expose: true
+        exposedPort: 80
+        protocol: TCP
+        transport:
+          respondingTimeouts:
+            readTimeout:
+            writeTimeout:
+            idleTimeout:
+          lifeCycle:
+            requestAcceptGraceTimeout:
+            graceTimeOut:
+          keepAliveMaxRequests:
+          keepAliveMaxTime:
+      websecure:
+        port: 8443
+        expose: true
+        exposedPort: 443
+        protocol: TCP
+        http3:
+          enabled: true
+        transport:
+          respondingTimeouts:
+            readTimeout:
+            writeTimeout:
+            idleTimeout:
+          lifeCycle:
+            requestAcceptGraceTimeout:
+            graceTimeout:
+          keepAliveMaxRequests:
+          keepAliveMaxTime:
+        tls:
+          enabled: true
+          options: ""
+          certResolver: ""
+          domains: []
+        middlewares: []
+      metrics:
+        port: 9100
+        expose: false
+        exposedPort: 9100
+        protocol: TCP

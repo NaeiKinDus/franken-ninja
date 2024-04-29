@@ -1,0 +1,64 @@
+version: '3'
+
+vars:
+  REGISTRY: '{{default "https://index.docker.io/v1/" .REGISTRY}}'
+  REPOSITORY: '{{default "pouncetech" .REPOSITORY}}'
+  IMAGE_NAME: '{{default "invoiceninja" .IMAGE_NAME}}'
+  KUBE_VERSION:
+    sh: kubectl version | sed -En 's/^server\sversion:\sv([0-9.]+).*$/\1/imp'
+
+tasks:
+  setup:tools:
+    desc: install tools used to manage this project (linters, hooks, ...)
+    cmds:
+      - curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+  app:key:
+    desc: generate a valid APP_KEY
+    cmd: printf "base64:%s\n" $(cat /dev/urandom| head -c 32 | base64 | tr '/+' 'Zu')
+
+  app:cleanup:
+    internal: true
+    cmds:
+      - |
+        rm -rf application
+        git checkout application
+        cd application
+        git remote update
+        git checkout {{if .INVOICE_NINJA_VERSION}}{{.INVOICE_NINJA_VERSION}}{{else}}$(git tag --sort=creatordate | tail -1){{end}}
+
+  image:build:
+    desc: build the Docker image
+    cmds:
+      - task: 'app:cleanup'
+      - |
+        docker buildx build --load \
+          -t {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{default "$(cd application && git tag --sort=creatordate | tail -1)" .INVOICE_NINJA_VERSION}} \
+         {{if not .INVOICE_NINJA_VERSION}} -t {{.REPOSITORY}}/{{.IMAGE_NAME}}:latest{{end}} .
+
+  image:validate:
+    desc: run all validation tests for the image
+    cmds:
+      - 'echo TODO: use dive --ci and other validation tools'
+
+  image:release:
+    desc:
+      push an image to the registry; if no version is specified, retrieves the version from the application and
+      additionally push the "latest" tag referencing this release
+    vars:
+      IMAGE_TAG: '{{.CLI_ARGS}}'
+      GIT_REPOSITORY_TAG:
+        sh: cd application && git tag --sort=creatordate | tail -1
+    prompt:
+      'Pushing image "{{.REPOSITORY}}/{{.IMAGE_NAME}}:{{default .GIT_REPOSITORY_TAG .IMAGE_TAG}}". Continue?'
+    cmds:
+      - 'docker login {{.REGISTRY}}'
+      - 'docker push {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{default .GIT_REPOSITORY_TAG .IMAGE_TAG}}'
+      - 'test -z "{{.IMAGE_TAG}}" && docker push {{.REPOSITORY}}/{{.IMAGE_NAME}}:latest || exit 0'
+
+  pipeline:
+    desc: run all steps required to build and publish a new image
+    cmds:
+      - task: 'image:build'
+      - task: 'image:validate'
+      - task: 'image:release'
