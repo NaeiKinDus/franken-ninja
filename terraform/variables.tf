@@ -349,7 +349,7 @@ variable "deployment_pods_annotations" {
 
 ### Container
 variable "container_image" {
-  default     = "pouncetech/invoiceninja"
+  default     = "pouncetech/invoiceninja:latest"
   description = "Image to use for the web app"
   type        = string
   nullable    = false
