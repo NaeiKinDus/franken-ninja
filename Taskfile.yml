@@ -39,6 +39,7 @@ tasks:
         sh: git rev-parse --verify HEAD
       GIT_REPOSITORY_APP_TAG:
         sh: cd application && git tag --sort=creatordate | tail -1
+      DISABLE_CACHE: '{{default "" .NO_CACHE}}'
     cmds:
       - task: 'app:cleanup'
       - |
@@ -47,7 +48,7 @@ tasks:
         --build-arg "PHP_VERSION={{.DOCKER_PHP_VERSION}}" \
         --build-arg "INVOICE_NINJA_VERSION={{.GIT_REPOSITORY_APP_TAG}}" \
         --load -t {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}} \
-        .
+        {{if .DISABLE_CACHE}}--no-cache{{end}} .
 
   image:validate:
     desc: run all validation tests for the image

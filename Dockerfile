@@ -39,7 +39,8 @@ RUN set -eux; \
 COPY ./config/php.ini /usr/local/etc/php/php.ini
 
 RUN set -eux; \
-    apk add --no-cache --update \
+    apk upgrade --no-cache --update --no-interactive \
+    && apk add --no-cache --update \
       chromium \
       mariadb-client \
       tini \
@@ -49,9 +50,10 @@ RUN set -eux; \
       gmp \
       pdo_mysql \
       zip \
-    && curl -so /tmp/composer.phar https://getcomposer.org/download/latest-stable/composer.phar \
-    && chmod 555 /tmp/composer.phar \
-    && find /usr/local/lib -type f -print0 | xargs -0r strip --strip-all -p 2>/dev/null || true \
+    && curl -so /usr/local/bin/composer https://getcomposer.org/download/latest-stable/composer.phar \
+    && chmod 555 /usr/local/bin/composer \
+    && ls -lah /usr/local/bin/composer \
+    && (find /usr/local/lib -type f -print0 | xargs -0r strip --strip-all -p 2>/dev/null || true) \
     ;
 
 COPY ./config/docker-php-entrypoint /usr/local/bin/docker-php-entrypoint
@@ -62,7 +64,7 @@ WORKDIR /app
 USER invoice
 RUN set -eux; \
     touch .env \
-    && /tmp/composer.phar install --no-dev --no-progress --optimize-autoloader --no-interaction \
+    && composer install --no-dev --no-progress --optimize-autoloader --no-interaction \
     ;
 
 EXPOSE 443/tcp 443/udp
