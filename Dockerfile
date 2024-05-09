@@ -6,12 +6,15 @@ ARG OS_FLAVOR=alpine
 ARG REPOSITORY=docker.io
 
 FROM ${REPOSITORY}/${BASE_IMAGE}:${FRANKENPHP_VERSION}-php${PHP_VERSION}-${OS_FLAVOR}
+ARG INVOICE_NINJA_VERSION
 LABEL org.opencontainers.image.base.name="dunglas/frankenphp"
 LABEL org.opencontainers.image.description="Light-ish Invoice Ninja image using FrankenPHP"
 LABEL org.opencontainers.image.licenses="GPL-2.0-only"
 LABEL org.opencontainers.image.title="Invoice Ninja"
 LABEL org.opencontainers.image.authors="Florian Lavidalie"
 LABEL org.opencontainers.image.vendor="Florian Lavidalie"
+LABEL org.opencontainers.image.version="${INVOICE_NINJA_VERSION}"
+LABEL org.opencontainers.image.url="https://gitlab.0x2a.ninja/flowtech/oss/invoice-ninja"
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000

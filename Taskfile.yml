@@ -7,6 +7,9 @@ vars:
   IMAGE_NAME: '{{default "invoiceninja" .IMAGE_NAME}}'
   KUBE_VERSION:
     sh: kubectl version | sed -En 's/^server\sversion:\sv([0-9.]+).*$/\1/imp'
+  # Docker build related
+  DOCKER_FRANKENPHP_VERSION: 1.1.4
+  DOCKER_PHP_VERSION: 8.2.18
 
 tasks:
   setup:tools:
@@ -34,9 +37,17 @@ tasks:
     vars:
       GIT_REPOSITORY_SHA1:
         sh: git rev-parse --verify HEAD
+      GIT_REPOSITORY_APP_TAG:
+        sh: cd application && git tag --sort=creatordate | tail -1
     cmds:
       - task: 'app:cleanup'
-      - 'docker buildx build --load -t {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}} .'
+      - |
+        docker buildx build \
+        --build-arg "FRANKENPHP_VERSION={{.DOCKER_FRANKENPHP_VERSION}}" \
+        --build-arg "PHP_VERSION={{.DOCKER_PHP_VERSION}}" \
+        --build-arg "INVOICE_NINJA_VERSION={{.GIT_REPOSITORY_APP_TAG}}" \
+        --load -t {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}} \
+        .
 
   image:validate:
     desc: run all validation tests for the image
