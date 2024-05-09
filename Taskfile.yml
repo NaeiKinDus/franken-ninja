@@ -20,6 +20,7 @@ tasks:
 
   app:cleanup:
     internal: true
+    desc: remove then re-checkout the app repository for a clean slate
     cmds:
       - |
         rm -rf application
@@ -30,12 +31,12 @@ tasks:
 
   image:build:
     desc: build the Docker image
+    vars:
+      GIT_REPOSITORY_SHA1:
+        sh: git rev-parse --verify HEAD
     cmds:
       - task: 'app:cleanup'
-      - |
-        docker buildx build --load \
-          -t {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{default "$(cd application && git tag --sort=creatordate | tail -1)" .INVOICE_NINJA_VERSION}} \
-         {{if not .INVOICE_NINJA_VERSION}} -t {{.REPOSITORY}}/{{.IMAGE_NAME}}:latest{{end}} .
+      - 'docker buildx build --load -t {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}} .'
 
   image:validate:
     desc: run all validation tests for the image
@@ -48,13 +49,22 @@ tasks:
       additionally push the "latest" tag referencing this release
     vars:
       IMAGE_TAG: '{{.CLI_ARGS}}'
+      GIT_REPOSITORY_SHA1:
+        sh: git rev-parse --verify HEAD
       GIT_REPOSITORY_TAG:
+        sh: git tag --sort=creatordate | tail -1
+      GIT_REPOSITORY_APP_TAG:
         sh: cd application && git tag --sort=creatordate | tail -1
     prompt:
-      'Pushing image "{{.REPOSITORY}}/{{.IMAGE_NAME}}:{{default .GIT_REPOSITORY_TAG .IMAGE_TAG}}". Continue?'
+      'Pushing image "{{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}}
+      (target tag: {{.GIT_REPOSITORY_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}})". Continue?'
     cmds:
+      - |
+        docker tag {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}} \
+          {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}}
+      - 'test -z "{{.IMAGE_TAG}}" && docker tag {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}} {{.REPOSITORY}}/{{.IMAGE_NAME}}:latest'
       - 'docker login {{.REGISTRY}}'
-      - 'docker push {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{default .GIT_REPOSITORY_TAG .IMAGE_TAG}}'
+      - 'docker push {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}}'
       - 'test -z "{{.IMAGE_TAG}}" && docker push {{.REPOSITORY}}/{{.IMAGE_NAME}}:latest || exit 0'
 
   pipeline:
