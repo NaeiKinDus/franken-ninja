@@ -25,7 +25,7 @@ In comes FrankenPHP, a Caddy-based software that offers many improvements over t
 - Docker (tested on version 25.0.3),
 - Docker Compose (tested on version 2.24.5),
 - [Task](https://github.com/go-task/task) (tested on version 3.31.0),
-- [OpenTofu]() (tested on version 1.6.2) to deploy to a Kubernetes cluster.
+- [OpenTofu](https://opentofu.org/) (tested on version 1.6.2) to deploy to a Kubernetes cluster.
 
 ## Setup
 ### For Docker
