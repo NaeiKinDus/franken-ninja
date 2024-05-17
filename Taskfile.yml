@@ -21,9 +21,8 @@ tasks:
     desc: generate a valid APP_KEY
     cmd: printf "base64:%s\n" $(cat /dev/urandom| head -c 32 | base64 | tr '/+' 'Zu')
 
-  app:cleanup:
-    internal: true
-    desc: remove then re-checkout the app repository for a clean slate
+  app:reset:
+    desc: reset ./application directory and set it to track the latest available tag
     cmds:
       - |
         rm -rf application
@@ -38,10 +37,9 @@ tasks:
       GIT_REPOSITORY_SHA1:
         sh: git rev-parse --verify HEAD
       GIT_REPOSITORY_APP_TAG:
-        sh: cd application && git tag --sort=creatordate | tail -1
+        sh: cd application && git tag --points-at=HEAD
       DISABLE_CACHE: '{{default "" .NO_CACHE}}'
     cmds:
-      - task: 'app:cleanup'
       - |
         docker buildx build \
         --build-arg "FRANKENPHP_VERSION={{.DOCKER_FRANKENPHP_VERSION}}" \
@@ -55,33 +53,103 @@ tasks:
     cmds:
       - 'echo TODO: use dive --ci and other validation tools'
 
-  image:release:
+  metadata:
+    desc: update local files to reflect the new image that is in the process of being pushed, then commit the changes
+    preconditions:
+      - sh: test -n "{{.RELEASE_TAG}}"
+        msg: "Missing argument: target release tag"
+    vars:
+      GIT_REPOSITORY_APP_TAG:
+        sh: cd application && git tag --points-at=HEAD
+      RELEASE_TAG: '{{default (split " " .CLI_ARGS)._0 .RELEASE_TAG}}'
+    cmds:
+      - |
+        echo "Updating docker-compose.yml"
+        sed -Ei \
+          's/^([[:space:]]+image:[[:space:]]+)"({{.REPOSITORY}}\/{{.IMAGE_NAME}}):(latest|v?[[:alnum:]._-]+)"$/\1"\2:{{.RELEASE_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}}"/' \
+          ./docker-compose.yml
+      - |
+        echo "Updating terraform.tfvars.example"
+        sed -Ei \
+          's/^(container_image[[:space:]]+=[[:space:]]+)"({{.REPOSITORY}}\/{{.IMAGE_NAME}}):(latest|v?[[:alnum:]._-]+)"$/\1"\2:{{.RELEASE_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}}"/' \
+          ./terraform/terraform.tfvars.example
+      - |
+        echo "Updating Image Tag button in README.md"
+        sed -Ei \
+          's/^(!\[Image Tag\]\(https:\/\/[[:print:]]+Image_Tag-)[[:print:]]+(-4baaaa\.svg\?.+\))$/\1{{.RELEASE_TAG | replace "-" "--"}}--invoice{{(default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG) | replace "-" "--"}}\2/' \
+          ./README.md
+        echo "Updating Invoice Ninja version button in README.md"
+        sed -Ei \
+          's/^(!\[Invoice Ninja\]\(https:\/\/[[:print:]]+Invoice_Ninja-)[[:print:]]+(-4baaaa\.svg\?.+\))$/\1{{.GIT_REPOSITORY_APP_TAG | replace "-" "--"}}\2/' \
+          ./README.md
+      - git add ./docker-compose.yml ./terraform/terraform.tfvars.example ./README.md
+      - 'git commit -m "chores(metadata): prepare release for tag {{.RELEASE_TAG}}"'
+
+  release:image:
     desc:
       push an image to the registry; if no version is specified, retrieves the version from the application and
       additionally push the "latest" tag referencing this release
     vars:
-      IMAGE_TAG: '{{.CLI_ARGS}}'
+      RELEASE_TAG: '{{default (split " " .CLI_ARGS)._0 .RELEASE_TAG}}'
       GIT_REPOSITORY_SHA1:
         sh: git rev-parse --verify HEAD
-      GIT_REPOSITORY_TAG:
-        sh: git tag --sort=creatordate | tail -1
       GIT_REPOSITORY_APP_TAG:
-        sh: cd application && git tag --sort=creatordate | tail -1
-    prompt:
-      'Pushing image "{{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}}
-      (target tag: {{.GIT_REPOSITORY_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}})". Continue?'
+        sh: cd application && git tag --points-at=HEAD
+    preconditions:
+      - sh: test -n "{{.RELEASE_TAG}}"
+        msg: "Missing argument: target release tag"
     cmds:
       - |
         docker tag {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}} \
-          {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}}
+          {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.RELEASE_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}}
       - 'test -z "{{.IMAGE_TAG}}" && docker tag {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_SHA1}} {{.REPOSITORY}}/{{.IMAGE_NAME}}:latest'
       - 'docker login {{.REGISTRY}}'
-      - 'docker push {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.GIT_REPOSITORY_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}}'
+      - 'docker push {{.REPOSITORY}}/{{.IMAGE_NAME}}:{{.RELEASE_TAG}}-invoice{{default .GIT_REPOSITORY_APP_TAG .IMAGE_TAG}}'
       - 'test -z "{{.IMAGE_TAG}}" && docker push {{.REPOSITORY}}/{{.IMAGE_NAME}}:latest || exit 0'
 
-  pipeline:
-    desc: run all steps required to build and publish a new image
+  release:tag:
+    internal: true
+    desc:
+      create a new git tag for this repository then push it
+    vars:
+      RELEASE_TAG: '{{default (split " " .CLI_ARGS)._0 .RELEASE_TAG}}'
+      GIT_REPOSITORY_APP_TAG:
+        sh: cd application && git tag --points-at=HEAD
+    preconditions:
+      - sh: test -n "{{.RELEASE_TAG}}"
+        msg: "Missing argument: target release tag"
     cmds:
+      - 'git tag {{.RELEASE_TAG}} -m "released new tag {{.RELEASE_TAG}} with IN {{.GIT_REPOSITORY_APP_TAG}}"'
+
+  release:app:
+    internal: true
+    desc:
+      commit the current HEAD of the application submodule
+    vars:
+      GIT_REPOSITORY_APP_TAG:
+        sh: cd application && git tag --points-at=HEAD
+    cmds:
+      - git add ./application
+      - 'git commit -m "chore(application): update Invoice Ninja to version {{.GIT_REPOSITORY_APP_TAG}}"'
+
+  pipeline:
+    desc: run all steps required to build and release a new version
+    vars:
+      RELEASE_TAG: '{{(split " " .CLI_ARGS)._0}}'
+    preconditions:
+      - sh: test -n "{{.RELEASE_TAG}}"
+        msg: "Missing argument: target release tag"
+    cmds:
+      - task: 'app:reset'
       - task: 'image:build'
       - task: 'image:validate'
-      - task: 'image:release'
+      - task: 'metadata'
+        vars:
+          RELEASE_TAG: '{{.RELEASE_TAG}}'
+      - task: 'release:image'
+        vars:
+          RELEASE_TAG: '{{.RELEASE_TAG}}'
+      - task: 'release:app'
+      - task: 'release:tag'
+        vars:
+          RELEASE_TAG: '{{.RELEASE_TAG}}'
