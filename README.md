@@ -1,3 +1,6 @@
+![Image Tag](https://img.shields.io/badge/Image_Tag-0.0.2--invoicev5.8.57-4baaaa.svg?style=for-the-badge&logo=docker)
+![Invoice Ninja](https://img.shields.io/badge/Invoice_Ninja-v5.8.57-4baaaa.svg?style=for-the-badge&logo=invoiceninja)
+
 Invoice Ninja's Monster
 =======================
 A Kubernetes-oriented variation of Invoice Ninja's application with a dose of [FrankenPHP](https://frankenphp.dev).

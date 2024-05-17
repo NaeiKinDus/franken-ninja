@@ -2,7 +2,7 @@
 name: "invoiceninja"
 services:
   app:
-    image: "pouncetech/invoiceninja:latest"
+    image: "pouncetech/invoiceninja:0.0.2-invoicev5.8.57"
     container_name: "invoiceninja"
     env_file: "config/.env"
     environment:
@@ -25,7 +25,7 @@ services:
       invoice_ninja:
 
   app-upkeep:
-    image: "pouncetech/invoiceninja:latest"
+    image: "pouncetech/invoiceninja:0.0.2-invoicev5.8.57"
     container_name: "invoiceninja-upkeep"
     env_file: "config/.env"
     environment:
