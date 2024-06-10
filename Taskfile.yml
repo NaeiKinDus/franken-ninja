@@ -8,8 +8,8 @@ vars:
   KUBE_VERSION:
     sh: kubectl version | sed -En 's/^server\sversion:\sv([0-9.]+).*$/\1/imp'
   # Docker build related
-  DOCKER_FRANKENPHP_VERSION: 1.1.4
-  DOCKER_PHP_VERSION: 8.2.18
+  DOCKER_FRANKENPHP_VERSION: 1.2
+  DOCKER_PHP_VERSION: 8.2.20
 
 tasks:
   setup:tools:
