@@ -1,5 +1,5 @@
-![Image Tag](https://img.shields.io/badge/Image_Tag-0.0.6--invoicev5.10.4-4baaaa.svg?style=for-the-badge&logo=docker)
-![Invoice Ninja](https://img.shields.io/badge/Invoice_Ninja-v5.10.4-4baaaa.svg?style=for-the-badge&logo=invoiceninja)
+![Image Tag](https://img.shields.io/badge/Image_Tag-0.0.7--invoicev5.10.6-4baaaa.svg?style=for-the-badge&logo=docker)
+![Invoice Ninja](https://img.shields.io/badge/Invoice_Ninja-v5.10.6-4baaaa.svg?style=for-the-badge&logo=invoiceninja)
 
 Invoice Ninja's Monster
 =======================
