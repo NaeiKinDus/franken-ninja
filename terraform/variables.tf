@@ -319,7 +319,7 @@ variable "secrets_additional_labels" {
 ### Deployment
 variable "deployment_replicas" {
   default     = 1
-  description = "Number of instances how the web app"
+  description = "Number of instances of the web app"
   type        = number
 }
 
